@@ -1,0 +1,18 @@
+{
+  "name": "Bently Block Exchange Exporter",
+  "webodmMinVersion": "0.6.2",
+  "description": "Plugin to export photo triangulation in a Bently Blocks Exchange format.",
+  "version": "1.0.0",
+  "author": "Agisoft LLC",
+  "email": "support@agisoft.com",
+  "repository": "https://github.com/agisoft-llc/webodm-to-blocksexchange",
+  "tags": [
+    "export",
+    "cameras",
+    "compatibility",
+    "transformation"
+  ],
+  "homepage": "https://github.com/agisoft-llc/webodm-to-blocksexchange",
+  "experimental": false,
+  "deprecated": false
+}
