@@ -39,7 +39,7 @@ PluginsAPI.Dashboard.addTaskActionButton(function (options) {
 
                         function mapCameraModel(openSfmModel) {
                             const defaultModel = "Perspective"
-                            const entry = camera_model_map.find(m => m.opensfm === openSfmModel);
+                            const entry = cameraModelMap.find(m => m.opensfm === openSfmModel);
                             return entry ? entry.blocksexchange : defaultModel; // or a default
                         }
 
