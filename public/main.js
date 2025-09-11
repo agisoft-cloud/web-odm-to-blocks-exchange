@@ -11,13 +11,12 @@ PluginsAPI.Dashboard.addTaskActionButton(function (options) {
 
                     // OpenSfM : https://opensfm.readthedocs.io/en/latest/dataset.html#reconstruction-file-format
                     // BlocksExchange: https://docs.bentley.com/LiveContent/web/ContextCapture%20Help-v17/en/GUID-59E6CC36-F349-4DE0-A563-FFC47296A624.html
-                    const camera_model_map = [
+                    const cameraModelMap = [
                         { opensfm: "perspective", blocksexchange: "Perspective" },
                         { opensfm: "brown", blocksexchange: "Perspective" },
                         { opensfm: "fisheye", blocksexchange: "Fisheye" },
                         { opensfm: "equirectangular", blocksexchange: "Spherical" }
                     ];
-
 
                     try {
                         const [taskRes, shotsRes, cameraRes] = await Promise.all([
