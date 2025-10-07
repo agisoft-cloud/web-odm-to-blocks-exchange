@@ -3,8 +3,8 @@
 
 ## About
 
-This is a plugin for the [WebODM](https://github.com/OpenDroneMap/WebODM) photogrammetry software allowing 
-to export results of photo triangulation in a Bently Blocks Exchange format. This data can be further imported third party photogrammetry packages for processing.
+This plugin for [WebODM](https://github.com/OpenDroneMap/WebODM) enables the export of photo triangulation results in the [Bentley BlocksExchange](https://docs.bentley.com/LiveContent/web/ContextCapture%20Help-v18/en/GUID-59E6CC36-F349-4DE0-A563-FFC47296A624.html) format. The exported data can then be imported into third-party photogrammetry software for further processing.
+
 
 ## Limitations
 
