@@ -39,6 +39,11 @@ PluginsAPI.Dashboard.addTaskActionButton(function (options) {
                         }
 
                         function mapCameraModel(openSfmModel) {
+                            if (openSfmModel === "equirectangular") {
+                                alert("BlocksExchange does not support equirectangular cameras!")
+                                throw new Error("BlocksExchange does not support equirectangular cameras!")
+                            }
+
                             const defaultModel = "Perspective"
                             const entry = cameraModelMap.find(m => m.opensfm === openSfmModel);
                             return entry ? entry.blocksexchange : defaultModel;

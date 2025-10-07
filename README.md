@@ -4,7 +4,17 @@
 ## About
 
 This is a plugin for the [WebODM](https://github.com/OpenDroneMap/WebODM) photogrammetry software allowing 
-to export results of photo triangulation in a Bently Blocks Exchange format. This data can be further imported to Agisoft Metashape Professional or other photogrammetry packages for processing.
+to export results of photo triangulation in a Bently Blocks Exchange format. This data can be further imported third party photogrammetry packages for processing.
+
+## Limitations
+
+### Equirectangular cameras
+
+BlocksExchange does not support equirectangular cameras; therefore, exporting a dataset that includes equirectangular imagery will result in an error.
+
+### Mulitspectral datasets
+
+WebODM does not provide calibration parameters for all sensors in multispectral datasets (e.g., MicaSense cameras). Instead, it only includes calibration data for the primary band images. As a result, exporting photo triangulation parameters from a multispectral dataset will likely lead to incomplete or incorrect imports in third-party software.
 
 ## Development
 
@@ -34,7 +44,7 @@ plugin-name.zip
 
 **NOTE**
 
-WebODM will name your plugin accoriding to the name of the core folder in the archive, so name it appropiatly.
+WebODM names the plugin accoriding to the name of the core folder in the archive, so name it appropiatly.
 
 ## Installation and testing
 
