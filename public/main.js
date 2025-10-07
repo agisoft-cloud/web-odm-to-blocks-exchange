@@ -15,6 +15,7 @@ PluginsAPI.Dashboard.addTaskActionButton(function (options) {
                         { opensfm: "perspective", blocksexchange: "Perspective" },
                         { opensfm: "brown", blocksexchange: "Perspective" },
                         { opensfm: "fisheye", blocksexchange: "Fisheye" },
+                        { opensfm: "fisheye_opencv", blocksexchange: "Fisheye" },
                         { opensfm: "equirectangular", blocksexchange: "Spherical" }
                     ];
 
@@ -40,10 +41,9 @@ PluginsAPI.Dashboard.addTaskActionButton(function (options) {
                         function mapCameraModel(openSfmModel) {
                             const defaultModel = "Perspective"
                             const entry = cameraModelMap.find(m => m.opensfm === openSfmModel);
-                            return entry ? entry.blocksexchange : defaultModel; // or a default
+                            return entry ? entry.blocksexchange : defaultModel;
                         }
 
-                        // Convert rotation vector [rx, ry, rz] to rotation matrix 3x3
                         function rotationVectorToMatrix([rx, ry, rz]) {
                             const theta = Math.hypot(rx, ry, rz);
                             if (theta === 0) return [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
@@ -70,7 +70,6 @@ PluginsAPI.Dashboard.addTaskActionButton(function (options) {
                             ];
                         }
 
-                        // Get UTM zone string from task extent
                         function getUTMZoneFromExtent(extent) {
                             const [minLon, minLat, maxLon, maxLat] = extent;
                             const medianLon = (minLon + maxLon) / 2;
@@ -102,67 +101,102 @@ PluginsAPI.Dashboard.addTaskActionButton(function (options) {
                             xml += `${indent(2)}<SRSId>0</SRSId>\n`;
 
                             xml += `${indent(2)}<Photogroups>\n`;
-                            xml += `${indent(3)}<Photogroup>\n`;
 
-                            const firstShot = shots.features[0].properties;
-
-                            // Safe camera lookup: use first camera if key doesn't match
-                            let camModel = cameras[firstShot.camera];
-                            if (!camModel) {
-                                const firstCamKey = Object.keys(cameras)[0];
-                                camModel = cameras[firstCamKey];
-                                console.warn(`Camera key '${firstShot.camera}' not found, using first camera: '${firstCamKey}'`);
-                            }
-
-                            const pixel_cx = (camModel.c_x + 0.5) * firstShot.width;
-                            const pixel_cy = (camModel.c_y + 0.5) * firstShot.height;
-                            const pixel_focal_length = camModel.focal_x * camModel.width;
-                            xml += `${indent(4)}<Name>FC300X (3.61mm)</Name>`
-                            xml += `${indent(4)}<ImageDimensions><Width>${firstShot.width}</Width><Height>${firstShot.height}</Height></ImageDimensions>\n`;
-                            xml += `${indent(4)}<CameraModelType>${mapCameraModel(camModel.projection_type)}</CameraModelType>\n`;
-                            xml += `${indent(4)}<CameraModelBand>Visible</CameraModelBand>`
-
-                            // If you want to convert normalized principal points to pixel coords, do it here!
-                            xml += `${indent(4)}<PrincipalPoint><x>${pixel_cx}</x><y>${pixel_cy}</y></PrincipalPoint>\n`;
-
-                            xml += `${indent(4)}<FocalLengthPixels>${pixel_focal_length}</FocalLengthPixels>\n`;
-
-                            xml += `${indent(4)}<Distortion>\n`;
-                            xml += `${indent(5)}<K1>${camModel.k1}</K1>\n`;
-                            xml += `${indent(5)}<K2>${camModel.k2}</K2>\n`;
-                            xml += `${indent(5)}<P1>${camModel.p1}</P1>\n`;
-                            xml += `${indent(5)}<P2>${camModel.p2}</P2>\n`;
-                            xml += `${indent(5)}<K3>${camModel.k3}</K3>\n`;
-                            xml += `${indent(4)}</Distortion>\n`;
-
-                            shots.features.forEach((shot, index) => {
-                                const props = shot.properties;
-                                const matrix = rotationVectorToMatrix(props.rotation);
-
-                                xml += `${indent(4)}<Photo>\n`;
-                                xml += `${indent(5)}<Id>${index + 1}</Id>\n`;
-                                xml += `${indent(5)}<ImagePath>${props.filename}</ImagePath>\n`;
-                                xml += `${indent(5)}<Pose>\n`;
-
-                                xml += `${indent(6)}<Rotation>\n`;
-                                for (let r = 0; r < 3; r++) {
-                                    for (let c = 0; c < 3; c++) {
-                                        xml += `${indent(7)}<M_${r}${c}>${matrix[r][c]}</M_${r}${c}>\n`;
-                                    }
+                            // Group shots by camera
+                            const shotsByCamera = {};
+                            shots.features.forEach(shot => {
+                                const cameraKey = shot.properties.camera;
+                                if (!shotsByCamera[cameraKey]) {
+                                    shotsByCamera[cameraKey] = [];
                                 }
-                                xml += `${indent(6)}</Rotation>\n`;
-
-                                xml += `${indent(6)}<Center>\n`;
-                                xml += `${indent(7)}<x>${props.translation[0]}</x>\n`;
-                                xml += `${indent(7)}<y>${props.translation[1]}</y>\n`;
-                                xml += `${indent(7)}<z>${props.translation[2]}</z>\n`;
-                                xml += `${indent(6)}</Center>\n`;
-
-                                xml += `${indent(5)}</Pose>\n`;
-                                xml += `${indent(4)}</Photo>\n`;
+                                shotsByCamera[cameraKey].push(shot);
                             });
 
-                            xml += `${indent(3)}</Photogroup>\n`;
+                            // Create a photogroup for each camera
+                            let photoIdCounter = 1;
+                            Object.entries(shotsByCamera).forEach(([cameraKey, cameraShots]) => {
+                                let camModel = cameras[cameraKey];
+                                if (!camModel) {
+                                    const firstCamKey = Object.keys(cameras)[0];
+                                    camModel = cameras[firstCamKey];
+                                    console.warn(`Camera key '${cameraKey}' not found, using first camera: '${firstCamKey}'`);
+                                }
+
+                                const firstShot = cameraShots[0].properties;
+                                
+                                const pixel_cx = (camModel.c_x + 0.5) * firstShot.width;
+                                const pixel_cy = (camModel.c_y + 0.5) * firstShot.height;
+                                const pixel_focal_x = camModel.focal_x * firstShot.width;
+                                const pixel_focal_y = camModel.focal_y * firstShot.height;
+                                
+                                const isFisheye = camModel.projection_type === 'fisheye' || 
+                                                  camModel.projection_type === 'fisheye_opencv';
+
+                                xml += `${indent(3)}<Photogroup>\n`;
+                                xml += `${indent(4)}<Name>${cameraKey}</Name>\n`;
+                                xml += `${indent(4)}<ImageDimensions><Width>${firstShot.width}</Width><Height>${firstShot.height}</Height></ImageDimensions>\n`;
+                                xml += `${indent(4)}<CameraModelType>${mapCameraModel(camModel.projection_type)}</CameraModelType>\n`;
+                                xml += `${indent(4)}<CameraModelBand>Visible</CameraModelBand>\n`;
+                                xml += `${indent(4)}<PrincipalPoint><x>${pixel_cx}</x><y>${pixel_cy}</y></PrincipalPoint>\n`;
+                                
+                                // Fisheye cameras use focal matrix, others use single focal length
+                                if (isFisheye) {
+                                    // BlocksExchange uses π/2 scaling for fisheye focal length
+                                    // https://docs.bentley.com/LiveContent/web/ContextCapture%20Help-v18/en/GUID-2C3D344E-AC94-4928-8E3A-E85025EDDF1D.html
+                                    const fisheye_fx = pixel_focal_x * Math.PI / 2;
+                                    const fisheye_fy = pixel_focal_y * Math.PI / 2;
+                                    xml += `${indent(4)}<FisheyeFocalMatrix>\n`;
+                                    xml += `${indent(5)}<M_00>${fisheye_fx}</M_00>\n`;
+                                    xml += `${indent(5)}<M_01>0</M_01>\n`;
+                                    xml += `${indent(5)}<M_10>0</M_10>\n`;
+                                    xml += `${indent(5)}<M_11>${fisheye_fy}</M_11>\n`;
+                                    xml += `${indent(4)}</FisheyeFocalMatrix>\n`;
+                                } else {
+                                    xml += `${indent(4)}<FocalLengthPixels>${pixel_focal_x}</FocalLengthPixels>\n`;
+                                }
+
+                                // P coefficients are reversed in OpenSfm comparing to BlocksExchange, see:
+                                // https://opensfm.org/docs/geometry.html?highlight=brown#brown-camera
+                                // https://docs.bentley.com/LiveContent/web/ContextCapture%20Help-v18/en/GUID-2D452A8A-A4FE-450D-A0CA-9336DCF1238A.html
+                                xml += `${indent(4)}<Distortion>\n`;
+                                xml += `${indent(5)}<K1>${camModel.k1}</K1>\n`;
+                                xml += `${indent(5)}<K2>${camModel.k2}</K2>\n`;
+                                xml += `${indent(5)}<P1>${camModel.p2}</P1>\n`;
+                                xml += `${indent(5)}<P2>${camModel.p1}</P2>\n`;
+                                xml += `${indent(5)}<K3>${camModel.k3}</K3>\n`;
+                                xml += `${indent(4)}</Distortion>\n`;
+
+                                // Add all photos for this camera
+                                cameraShots.forEach((shot) => {
+                                    const props = shot.properties;
+                                    const matrix = rotationVectorToMatrix(props.rotation);
+
+                                    xml += `${indent(4)}<Photo>\n`;
+                                    xml += `${indent(5)}<Id>${photoIdCounter++}</Id>\n`;
+                                    xml += `${indent(5)}<ImagePath>${props.filename}</ImagePath>\n`;
+                                    xml += `${indent(5)}<Pose>\n`;
+
+                                    xml += `${indent(6)}<Rotation>\n`;
+                                    for (let r = 0; r < 3; r++) {
+                                        for (let c = 0; c < 3; c++) {
+                                            xml += `${indent(7)}<M_${r}${c}>${matrix[r][c]}</M_${r}${c}>\n`;
+                                        }
+                                    }
+                                    xml += `${indent(6)}</Rotation>\n`;
+
+                                    xml += `${indent(6)}<Center>\n`;
+                                    xml += `${indent(7)}<x>${props.translation[0]}</x>\n`;
+                                    xml += `${indent(7)}<y>${props.translation[1]}</y>\n`;
+                                    xml += `${indent(7)}<z>${props.translation[2]}</z>\n`;
+                                    xml += `${indent(6)}</Center>\n`;
+
+                                    xml += `${indent(5)}</Pose>\n`;
+                                    xml += `${indent(4)}</Photo>\n`;
+                                });
+
+                                xml += `${indent(3)}</Photogroup>\n`;
+                            });
+
                             xml += `${indent(2)}</Photogroups>\n`;
                             xml += `${indent(1)}</Block>\n`;
                             xml += `</BlocksExchange>\n`;
@@ -180,7 +214,7 @@ PluginsAPI.Dashboard.addTaskActionButton(function (options) {
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
-                        setTimeout(() => URL.revokeObjectURL(url), 100); // Delay revocation
+                        setTimeout(() => URL.revokeObjectURL(url), 100);
                     } catch (err) {
                         alert("Error exporting BlocksExchange: " + err.message);
                     }
