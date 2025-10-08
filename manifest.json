@@ -5,14 +5,14 @@
   "version": "1.0.0",
   "author": "Agisoft LLC",
   "email": "support@agisoft.com",
-  "repository": "https://github.com/agisoft-llc/webodm-to-blocksexchange",
+  "repository": "https://github.com/agisoft-cloud/web-odm-to-blocks-exchange",
   "tags": [
     "export",
     "cameras",
     "compatibility",
     "transformation"
   ],
-  "homepage": "https://github.com/agisoft-llc/webodm-to-blocksexchange",
+  "homepage": "https://github.com/agisoft-cloud/web-odm-to-blocks-exchange",
   "experimental": false,
   "deprecated": false
 }
